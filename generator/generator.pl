@@ -16,17 +16,34 @@ use Data::Dumper;
 ##############################################################################
 
 my $markov_chain = {
-	'start' => 'head'
-	, 'head' =>
-		{
+	'start' => {
+		'transistion' => {
+			s1 => 1
+		}
+		, 'emission' => {
+			'start' => 1
+		}
+	}
+	, 's1' => {
+		'transistion' => {
+			s1 => 1
+			, s2 => 1
+		}
+		, 'emission' => {
 			'head' => 5
 			, 'tail' => 5
 		}
-	, 'tail' =>
-		{
+	}
+	, 's2' => {
+		'transistion' => {
+			s1 => 1
+			, s2 => 2
+		}
+		, 'emission' => {
 			'head' => 5
 			, 'tail' => 5
 		}
+	}
 };
 
 
@@ -37,14 +54,40 @@ my $markov_chain = {
 #
 ##############################################################################
 
-sub next_state
+sub get_transition {
+	$state = shift;
+	return _get_value($state->{'transistion'});
+}
+
+
+
+##############################################################################
+#
+# Generate next state from current state.
+#
+##############################################################################
+
+sub get_emission {
+	$state = shift;
+	return _get_value($state->{'emission'});
+}
+
+
+
+##############################################################################
+#
+# Generate next state from current state.
+#
+##############################################################################
+
+sub _get_value
 {
 	my $state = shift;
 
 	my $state_index = 0;
 	my $state_table = {};
 
-	my $next_state_index;
+	my $next_state;
 
 	foreach (keys %{$state}) {
 		$state_index += $state->{$_};
@@ -54,12 +97,12 @@ sub next_state
 	my $random = int(rand($state_index));
 	for my $index (sort { $a <=> $b} keys %{$state_table}) {
 		if ($random < $index) {
-			$next_state_index = $index;
+			$next_state = $index;
 			last;
 		}
 	}
 
-	return $state_table->{$next_state_index};
+	return $state_table->{$next_state};
 }
 
 
@@ -74,13 +117,16 @@ sub generate_states
 {
 	my %p = @_;
 	my $markov_chain = $p{'markov_chain'};
-	my $state = $p{'state'} ||= $markov_chain->{'start'};
+	my $state = $p{'state'} ||= get_transition($markov_chain->{'start'});
 	my $count = $p{'count'};
 	my $result = [];
 
 	foreach (1 .. $count) {
-		push @{$result}, $state;
-		$state = next_state($markov_chain->{$state});
+		push @{$result}, {
+			'state' => $state
+			, 'emission' => get_emission($markov_chain->{$state})
+		};
+		$state = get_transition($markov_chain->{$state});
 	}
 
 	return $result;
@@ -94,7 +140,7 @@ sub generate_states
 ##############################################################################
 
 #my $state = $markov_chain->{$markov_chain->{'start'}};
-#print next_state($state);
+#print get_transition($state);
 
 $states =  generate_states(
 	'markov_chain' => $markov_chain
