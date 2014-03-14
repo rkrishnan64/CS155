@@ -66,9 +66,39 @@ sub next_state
 
 ##############################################################################
 #
+# Generate states
+#
+##############################################################################
+
+sub generate_states
+{
+	my %p = @_;
+	my $markov_chain = $p{'markov_chain'};
+	my $state = $p{'state'} ||= $markov_chain->{'start'};
+	my $count = $p{'count'};
+	my $result = [];
+
+	foreach (1 .. $count) {
+		push @{$result}, $state;
+		$state = next_state($markov_chain->{$state});
+	}
+
+	return $result;
+}
+
+
+##############################################################################
+#
 # main
 #
 ##############################################################################
-my $state = $markov_chain->{$markov_chain->{'start'}};
-print next_state($state);
 
+#my $state = $markov_chain->{$markov_chain->{'start'}};
+#print next_state($state);
+
+$states =  generate_states(
+	'markov_chain' => $markov_chain
+	, 'count' => 50
+	);
+
+print Dumper $states;
