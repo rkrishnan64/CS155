@@ -8,43 +8,29 @@
 #
 
 use Data::Dumper;
+use JSON;
+
+
 
 ##############################################################################
 #
-# markov chain
+# Import Markov Model
 #
 ##############################################################################
 
-my $markov_chain = {
-	'start' => {
-		'transistion' => {
-			s1 => 1
-		}
-		, 'emission' => {
-			'start' => 1
-		}
-	}
-	, 's1' => {
-		'transistion' => {
-			s1 => 1
-			, s2 => 1
-		}
-		, 'emission' => {
-			'head' => 5
-			, 'tail' => 5
-		}
-	}
-	, 's2' => {
-		'transistion' => {
-			s1 => 1
-			, s2 => 2
-		}
-		, 'emission' => {
-			'head' => 5
-			, 'tail' => 5
-		}
-	}
-};
+sub import_markov_model {
+	my $filename = shift;
+	my $markov_model = {};
+
+	open(FH, "<", $filename) or die "< $filename: cannot open $!";
+
+	local $/;
+	my $input = <FH>;
+
+	$markov_model = from_json($input);
+
+	return $markov_model;
+}
 
 
 
@@ -55,7 +41,7 @@ my $markov_chain = {
 ##############################################################################
 
 sub get_transition {
-	$state = shift;
+	my $state = shift;
 	return _get_value($state->{'transistion'});
 }
 
@@ -68,7 +54,7 @@ sub get_transition {
 ##############################################################################
 
 sub get_emission {
-	$state = shift;
+	my $state = shift;
 	return _get_value($state->{'emission'});
 }
 
@@ -116,17 +102,17 @@ sub _get_value
 sub generate_states
 {
 	my %p = @_;
-	my $markov_chain = $p{'markov_chain'};
-	my $state = $p{'state'} ||= get_transition($markov_chain->{'start'});
+	my $markov_model = $p{'markov_model'};
+	my $state = $p{'state'} ||= get_transition($markov_model->{'start'});
 	my $count = $p{'count'};
 	my $result = [];
 
 	foreach (1 .. $count) {
 		push @{$result}, {
 			'state' => $state
-			, 'emission' => get_emission($markov_chain->{$state})
+			, 'emission' => get_emission($markov_model->{$state})
 		};
-		$state = get_transition($markov_chain->{$state});
+		$state = get_transition($markov_model->{$state});
 	}
 
 	return $result;
@@ -139,12 +125,10 @@ sub generate_states
 #
 ##############################################################################
 
-#my $state = $markov_chain->{$markov_chain->{'start'}};
-#print get_transition($state);
-
-$states =  generate_states(
-	'markov_chain' => $markov_chain
-	, 'count' => 50
+my $markov_model = import_markov_model('markov_model.data');
+my $states =  generate_states(
+	'markov_model' => $markov_model
+	, 'count' => 100
 	);
 
 print Dumper $states;
