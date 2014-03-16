@@ -1,17 +1,18 @@
 {
 	"start" : {
-		"transistion" : {
+		"transition" : {
 			"fair" : "1"
-			, "**LOADED**" : "1"
-		}
-		, "emission" : {
-			"start" : "1"
+			, "loaded" : "1"
 		}
 	}
+	, "states" : [
+		"fair"
+		, "loaded"
+	]
 	, "fair" : {
-		"transistion" : {
+		"transition" : {
 			"fair" : "95"
-			, "**LOADED**" : "5"
+			, "loaded" : "5"
 		}
 		, "emission" : {
 			"1" : "1"
@@ -22,10 +23,10 @@
 			, "6" : "1"
 		}
 	}
-	, "**LOADED**" : {
-		"transistion" : {
+	, "loaded" : {
+		"transition" : {
 			"fair" : "1"
-			, "**LOADED**" : "9"
+			, "loaded" : "9"
 		}
 		, "emission" : {
 			"1" : "1"

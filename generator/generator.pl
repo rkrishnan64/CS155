@@ -73,7 +73,7 @@ sub import_state_table {
 
 sub get_transition {
 	my $state = shift;
-	return _get_value($state->{'transistion'});
+	return _get_value($state->{'transition'});
 }
 
 
@@ -139,11 +139,11 @@ sub generate_states
 	my $result = [];
 
 	foreach (1 .. $count) {
+		$state = get_transition($markov_model->{$state});
 		push @{$result}, {
 			'state' => $state
 			, 'emission' => get_emission($markov_model->{$state})
 		};
-		$state = get_transition($markov_model->{$state});
 	}
 
 	return $result;
@@ -156,7 +156,7 @@ sub generate_states
 #
 ##############################################################################
 
-die "markov_model xor state_table"
+die "markov_model xor state_table\n"
 	if (!($markov_model_file xor $state_table_file));
 
 # print "MM [$markov_model_file]\n";
@@ -180,10 +180,10 @@ if ($state_table_file) {
 my $output;
 
 if ($all) {
-	print to_json $states;
+	print to_json $states, { pretty => 1 };
 }
 else {
 	@{$output} = map { $_->{'emission'} } @{$states};
 	# print Dumper $output;
-	print to_json($output);
+	print to_json $output, { pretty => 1 };
 }
