@@ -13,11 +13,13 @@ use Getopt::Long;
 use JSON;
 use List::Util qw(reduce);
 
+my $debug;
 my $markov_model_file;
 my $emissions_file;
 
 GetOptions(
-	"markov-model=s" => \$markov_model_file
+	"debug" => \$debug
+	, "markov-model=s" => \$markov_model_file
 	, "emissions-file=s" => \$emissions_file
 	);
 
@@ -46,45 +48,47 @@ sub viterbi
 	my $state;
 
 	# initialize base cases
-	# my $total_transition_weights = reduce { $a + $b } values $markov_model->{'start'}{'transition'};
-	# my $total_emission_weights;
-	# print "Max transition weights [$total_transition_weights]\n";
 	for my $state (@{$markov_model->{'states'}}) {
-		# $total_emission_weights = reduce { $a + $b } values $markov_model->{$state}{'emission'};
+		if ($debug) {
+			printf "start -> [%s][%g] E[%s] O[%g] P[%g]\n"
+				, $state
+				, $markov_model->{'start'}{'transition'}{$state} . "]\n"
+				, $observations->[0]
+				, $markov_model->{$state}{'emission'}{$observations->[0]}
+				, $markov_model->{'start'}{'transition'}{$state}
+					* $markov_model->{$state}{'emission'}{$observations->[0]}
+				;
+		}
 
-		print "start transition [" . $markov_model->{'start'}{'transition'}{$state} . "]\n";
-
-		my $previous_state_probability
+		my $start_state_probability
 			= $markov_model->{'start'}{'transition'}{$state}
-			# / $total_transition_weights
 			;
 
-		print "[$state][" . $observations->[0] 
-			. "][" . $markov_model->{$state}{'emission'}{$observations->[0]} 
-			# . "][" . $total_emission_weights
-			. "]\n";
-
-		my $current_state_probability
+		my $emission_state_probability
 			= $markov_model->{$state}{'emission'}{$observations->[0]}
-			# / $total_emission_weights
 			;
 
-		print "[$previous_state_probability] [$current_state_probability]\n";
-		$viterbi->[0]{$state}
-			= $previous_state_probability
-			* $current_state_probability
+		my $probability 
+			= $start_state_probability
+			* $emission_state_probability
 			;
+
+		$viterbi->[0]{$state} = $probability;
 
 		$path->{$state} = [$state];
 	}
 
-	print to_json $viterbi, { pretty => 1 };
-	print to_json $path, { pretty => 1 };
+	if ($debug) {
+		print to_json $viterbi, { pretty => 1 };
+		print to_json $path, { pretty => 1 };
+	}
 
 	my $index = 0;
 	my $new_path;
 	my $probability;
 	my $path_state;
+
+
 
 	for my $i (1 .. scalar @{$observations} - 1) {
 		# print "index [$i]\n";
@@ -94,14 +98,16 @@ sub viterbi
 			($probability, $path_state) = @{
 				reduce { $a->[0] > $b->[0] ? $a : $b } 
 				map {
-					printf "%8s: V[%g] T[%g] E[%g] P[%g]\n"
+					printf "%6s: V[%-11g] -> T[%6s]P[%-4.2g] O[%s]P[%-8g] TP[%-11g]\n"
 						, $_
 						, $viterbi->[$i - 1]{$_}
+						, $state
 						, $markov_model->{$_}{'transition'}{$state}
+						, $observations->[$i]
 						, $markov_model->{$state}{'emission'}{$observations->[$i]}
 						, $viterbi->[$i - 1]{$_}
-						* $markov_model->{$_}{'transition'}{$state}
-						* $markov_model->{$state}{'emission'}{$observations->[$i]}
+							* $markov_model->{$_}{'transition'}{$state}
+							* $markov_model->{$state}{'emission'}{$observations->[$i]}
 
 						;
 					[
@@ -113,13 +119,22 @@ sub viterbi
 				}
 				@{$markov_model->{'states'}}
 			};
-			print "[$probability][$path_state]\n";
 			$viterbi->[$i]{$state} = $probability;
 			push @{$path->{$state}}, $path_state;
-			print "\n";
 		}
-		print "\n";
+
 		$index = $i;
+
+		($probability, $path_state) =
+			@{
+				reduce { $a->[0] > $b->[0] ? $a : $b }
+				map {[
+					$viterbi->[$index]{$_}
+					, $_
+				]}
+				@{$markov_model->{'states'}}
+			};
+		print "[$path_state][$probability]\n\n";
 	}
 
 	# $index = 0;
