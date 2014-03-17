@@ -40,17 +40,19 @@ sub viterbi
 	my $observations = $p{'observations'};
 	my $markov_model = $p{'markov_model'};
 
-	# print to_json $observations, { pretty => 1 };
-	# print to_json $markov_model, { pretty => 1 };
-
 	my $viterbi = [];
 	my $path = {};
+	my $index = 0;
+	my $probability;
 	my $state;
+	my $new_path;
 
 	# initialize base cases
 	for my $state (@{$markov_model->{'states'}}) {
 		if ($debug) {
-			printf "start -> [%s][%g] E[%s] O[%g] P[%g]\n"
+			printf "%6s: V[%-11g] -> T[%6s]P[%-4.2g] O[%s]P[%-8g] TP[%-11g]\n"
+				, "start"
+				, 1
 				, $state
 				, $markov_model->{'start'}{'transition'}{$state} . "]\n"
 				, $observations->[0]
@@ -79,53 +81,7 @@ sub viterbi
 	}
 
 	if ($debug) {
-		print to_json $viterbi, { pretty => 1 };
-		print to_json $path, { pretty => 1 };
-	}
-
-	my $index = 0;
-	my $new_path;
-	my $probability;
-	my $path_state;
-
-
-
-	for my $i (1 .. scalar @{$observations} - 1) {
-		# print "index [$i]\n";
-		$new_path = {};
-
-		for my $state (@{$markov_model->{'states'}}) {
-			($probability, $path_state) = @{
-				reduce { $a->[0] > $b->[0] ? $a : $b } 
-				map {
-					printf "%6s: V[%-11g] -> T[%6s]P[%-4.2g] O[%s]P[%-8g] TP[%-11g]\n"
-						, $_
-						, $viterbi->[$i - 1]{$_}
-						, $state
-						, $markov_model->{$_}{'transition'}{$state}
-						, $observations->[$i]
-						, $markov_model->{$state}{'emission'}{$observations->[$i]}
-						, $viterbi->[$i - 1]{$_}
-							* $markov_model->{$_}{'transition'}{$state}
-							* $markov_model->{$state}{'emission'}{$observations->[$i]}
-
-						;
-					[
-						$viterbi->[$i - 1]{$_}
-						* $markov_model->{$_}{'transition'}{$state}
-						* $markov_model->{$state}{'emission'}{$observations->[$i]}
-						, $_
-					]
-				}
-				@{$markov_model->{'states'}}
-			};
-			$viterbi->[$i]{$state} = $probability;
-			push @{$path->{$state}}, $path_state;
-		}
-
-		$index = $i;
-
-		($probability, $path_state) =
+		($probability, $state) =
 			@{
 				reduce { $a->[0] > $b->[0] ? $a : $b }
 				map {[
@@ -134,12 +90,61 @@ sub viterbi
 				]}
 				@{$markov_model->{'states'}}
 			};
-		print "[$path_state][$probability]\n\n";
+		print "[$probability][$state]\n" . to_json($path->{$state}, {pretty => 1}) . "\n\n";
+	}
+
+	for my $i (1 .. scalar @{$observations} - 1) {
+		$new_path = {};
+		for my $next_state (@{$markov_model->{'states'}}) {
+			($probability, $state) = @{
+				reduce { $a->[0] > $b->[0] ? $a : $b } 
+				map {
+					printf "%6s: V[%-11g] -> T[%6s]P[%-4.2g] O[%s]P[%-8g] TP[%-11g]\n"
+						, $_
+						, $viterbi->[$i - 1]{$_}
+						, $next_state
+						, $markov_model->{$_}{'transition'}{$next_state}
+						, $observations->[$i]
+						, $markov_model->{$next_state}{'emission'}{$observations->[$i]}
+						, $viterbi->[$i - 1]{$_}
+							* $markov_model->{$_}{'transition'}{$next_state}
+							* $markov_model->{$next_state}{'emission'}{$observations->[$i]}
+
+						;
+					[
+						$viterbi->[$i - 1]{$_}
+							* $markov_model->{$_}{'transition'}{$next_state}
+							* $markov_model->{$next_state}{'emission'}{$observations->[$i]}
+						, $_
+					]
+				}
+				@{$markov_model->{'states'}}
+			};
+			$viterbi->[$i]{$next_state} = $probability;
+			@{$new_path->{$next_state}} = (@{$path->{$state}}, ($next_state));
+		}
+
+		$path = $new_path;
+		$index = $i;
+
+		print to_json $path, {pretty => 1};
+		($probability, $state) =
+			@{
+				reduce { $a->[0] > $b->[0] ? $a : $b }
+				map {[
+					$viterbi->[$index]{$_}
+					, $_
+				]}
+				@{$markov_model->{'states'}}
+			};
+		print "[$probability][$state]\n"
+			. to_json($path->{$state}, {pretty => 1})
+			. "\n\n";
 	}
 
 	# $index = 0;
 
-	($probability, $path_state) =
+	($probability, $state) =
 		@{
 			reduce { $a->[0] > $b->[0] ? $a : $b }
 			map {[
@@ -151,7 +156,7 @@ sub viterbi
 
 	return {
 		'probability' => $probability
-		, 'path' => $path->{$path_state}
+		, 'path' => $path->{$state}
 	};
 }
 
