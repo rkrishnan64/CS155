@@ -15,16 +15,16 @@ use List::Util qw(reduce);
 
 my $debug;
 my $markov_model_file;
-my $emissions_file;
+my $observations_file;
 
 GetOptions(
 	"debug" => \$debug
 	, "markov-model=s" => \$markov_model_file
-	, "emissions-file=s" => \$emissions_file
+	, "observations-file=s" => \$observations_file
 	);
 
-die "markov_model and emissions_file\n"
-	if (!($markov_model_file and $emissions_file));
+die "markov_model and observations_file\n"
+	if (!($markov_model_file and $observations_file));
 
 
 
@@ -180,6 +180,8 @@ sub import_markov_model {
 
 	$markov_model = from_json($input);
 
+	# train system
+
 	for my $state (keys %{$markov_model}) {
 		$markov_model_probabilities->{$state} = ();
 		if ($state eq 'states') {
@@ -205,28 +207,29 @@ sub import_markov_model {
 
 ##############################################################################
 #
-# Import Emissions Data
+# Import Observation Data
 #
 ##############################################################################
 
-sub import_emissions_data {
+sub import_observations_data {
 	my $filename = shift;
-	my $emissions_data;
+	my $observations_data;
 
 	open(FH, "<", $filename) or die "< $filename: cannot open $!";
 
 	local $/;
 	my $input = <FH>;
 
-	$emissions_data = from_json($input);
+	$observations_data = from_json($input);
 
-	return $emissions_data;
+	return $observations_data;
 }
 
+my $observation_data = import_observations_data($observations_file);
 
 print to_json viterbi(
 	  'markov_model' => import_markov_model($markov_model_file) 
-	, 'observations' => import_emissions_data($emissions_file)
+	, 'observations' => import_observations_data($observations_file)
 	)
 	, { pretty => 1 }
 	;
