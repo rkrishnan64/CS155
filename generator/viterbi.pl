@@ -139,18 +139,19 @@ sub viterbi
 			($probability, $state) = @{
 				reduce { $a->[0] > $b->[0] ? $a : $b } 
 				map {
-					printf "%6s: V[%-11g] -> T[%6s]P[%-4.2g] O[%s]P[%-8g] TP[%-11g]\n"
-						, $_
-						, $viterbi->[$i - 1]{$_}
-						, $next_state
-						, $training_data->{$_}{'transition'}{$next_state}
-						, $observations->[$i]
-						, $training_data->{$next_state}{'emission'}{$observations->[$i]}
-						, $viterbi->[$i - 1]{$_}
-							* $training_data->{$_}{'transition'}{$next_state}
-							* $training_data->{$next_state}{'emission'}{$observations->[$i]}
-
-						;
+					if ($debug) {
+						printf "%6s: V[%-11g] -> T[%6s]P[%-4.2g] O[%s]P[%-8g] TP[%-11g]\n"
+							, $_
+							, $viterbi->[$i - 1]{$_}
+							, $next_state
+							, $training_data->{$_}{'transition'}{$next_state}
+							, $observations->[$i]
+							, $training_data->{$next_state}{'emission'}{$observations->[$i]}
+							, $viterbi->[$i - 1]{$_}
+								* $training_data->{$_}{'transition'}{$next_state}
+								* $training_data->{$next_state}{'emission'}{$observations->[$i]}
+							;
+					}
 					[
 						$viterbi->[$i - 1]{$_}
 							* $training_data->{$_}{'transition'}{$next_state}
@@ -167,7 +168,9 @@ sub viterbi
 		$path = $new_path;
 		$index = $i;
 
-		print to_json $path, {pretty => 1};
+		if ($debug) {
+			print to_json $path, {pretty => 1};
+		}
 		($probability, $state) =
 			@{
 				reduce { $a->[0] > $b->[0] ? $a : $b }
@@ -177,9 +180,11 @@ sub viterbi
 				]}
 				@{$training_data->{'states'}}
 			};
-		print "[$probability][$state]\n"
-			. to_json($path->{$state}, {pretty => 1})
-			. "\n\n";
+		if ($debug) {
+			print "[$probability][$state]\n"
+				. to_json($path->{$state}, {pretty => 1})
+				. "\n\n";
+		}
 	}
 
 	# $index = 0;
