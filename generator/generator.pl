@@ -56,7 +56,7 @@ EOF
 
 die $HELP if $help;
 
-die "markov_model xor state_table\n$SYNOPSIS"
+die $SYNOPSIS
 	if (!($markov_model_file xor $state_table_file));
 
 

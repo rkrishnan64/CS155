@@ -46,7 +46,7 @@ EOF
 
 die $HELP if $help;
 
-die "markov_model and observations_file\n$SYNOPSIS"
+die $SYNOPSIS
 	if (!($markov_model_file and $observations_file));
 
 
