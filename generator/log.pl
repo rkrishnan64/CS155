@@ -4,6 +4,8 @@ use strict;
 
 print log (1/10);
 print "\n";
+print log (9/10);
+print "\n";
 
 print log exp(1);
 print "\n";
