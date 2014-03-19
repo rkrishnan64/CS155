@@ -23,11 +23,11 @@ GetOptions(
 	, "verbose" => \$verbose
 	, "markov-model=s" => \$markov_model_file
 	, "state-table=s" => \$state_table_file
-	, "count:i" => \$count
+	, "count=i" => \$count
 	);
 
 my $SYNOPSIS = <<EOF;
-$0 [-h] --markov-model xor --state-table FILE [--verbose]
+$0 --markov-model xor --state-table FILE [--verbose] [-h]
 EOF
 
 my $HELP = <<EOF;
@@ -53,6 +53,50 @@ $SYNOPSIS
         Print a help message and exit.
 
 EOF
+
+die $HELP if $help;
+
+die "markov_model xor state_table\n$SYNOPSIS"
+	if (!($markov_model_file xor $state_table_file));
+
+
+##############################################################################
+# main
+##############################################################################
+
+# print "MM [$markov_model_file]\n";
+
+my $markov_model;
+my $states;
+
+if ($markov_model_file) {
+	$markov_model = import_markov_model($markov_model_file);
+	$count ||= $default_count;
+	$states =  generate_states(
+		'markov_model' => $markov_model
+		, 'count' => $count
+		);
+}
+
+if ($state_table_file) {
+	$states = import_state_table($state_table_file);
+	$count ||= scalar @{$states};
+	$count = $count < scalar @{$states} ? $count : scalar @{$states};
+	$states = [@{$states}[0 .. $count - 1]];
+}
+
+# print Dumper $states;
+
+my $output;
+
+if ($verbose) {
+	print to_json $states, { pretty => 1 };
+}
+else {
+	@{$output} = map { $_->{'emission'} } @{$states};
+	print to_json $output, { pretty => 1 };
+}
+
 
 
 ##############################################################################
@@ -181,49 +225,4 @@ sub generate_states
 	}
 
 	return $result;
-}
-
-
-##############################################################################
-#
-# main
-#
-##############################################################################
-
-die $HELP if $help;
-
-die "markov_model xor state_table\n$SYNOPSIS"
-	if (!($markov_model_file xor $state_table_file));
-
-# print "MM [$markov_model_file]\n";
-
-my $markov_model;
-my $states;
-
-if ($markov_model_file) {
-	$markov_model = import_markov_model($markov_model_file);
-	$count ||= $default_count;
-	$states =  generate_states(
-		'markov_model' => $markov_model
-		, 'count' => $count
-		);
-}
-
-if ($state_table_file) {
-	$states = import_state_table($state_table_file);
-	$count ||= scalar @{$states};
-	$count = $count < scalar @{$states} ? $count : scalar @{$states};
-	$states = [@{$states}[0 .. $count - 1]];
-}
-
-# print Dumper $states;
-
-my $output;
-
-if ($verbose) {
-	print to_json $states, { pretty => 1 };
-}
-else {
-	@{$output} = map { $_->{'emission'} } @{$states};
-	print to_json $output, { pretty => 1 };
 }
