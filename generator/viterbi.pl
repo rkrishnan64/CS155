@@ -13,18 +13,58 @@ use Getopt::Long;
 use JSON;
 use List::Util qw(reduce);
 
+my $help;
 my $debug;
 my $markov_model_file;
 my $observations_file;
 
 GetOptions(
-	"debug" => \$debug
+	"help|h" => \$help
+	, "debug" => \$debug
 	, "markov-model=s" => \$markov_model_file
-	, "observations-file=s" => \$observations_file
+	, "observations=s" => \$observations_file
 	);
 
-die "markov_model and observations_file\n"
+my $SYNOPSIS = <<EOF;
+$0 --markov-model[=| ]FILE --observations[=| ]FILE [-h]
+EOF
+
+my $HELP = <<EOF;
+$SYNOPSIS
+    Viterbi prediction for the markov model and observations.
+
+    --markov-model[=| ]FILE
+        Markov model data filename.
+
+    --observations[=| ]FILE
+        Oservations data filename.
+
+    --help, -h
+        Print a help message and exit.
+
+EOF
+
+die $HELP if $help;
+
+die "markov_model and observations_file\n$SYNOPSIS"
 	if (!($markov_model_file and $observations_file));
+
+
+
+##############################################################################
+# Main
+##############################################################################
+
+my $markov_model = import_markov_model($markov_model_file);
+my $training_data = get_training_data($markov_model);
+my $observation_data = import_observations_data($observations_file);
+
+print to_json viterbi(
+	  'training_data' => $training_data
+	, 'observations'  => $observation_data
+	)
+	, { pretty => 1 }
+	;
 
 
 
@@ -171,7 +211,7 @@ sub viterbi
 sub import_markov_model {
 	my $filename = shift;
 	my $markov_model;
-	my $markov_model_probabilities;
+	my $training_data;
 
 	open(FH, "<", $filename) or die "< $filename: cannot open $!";
 
@@ -180,13 +220,27 @@ sub import_markov_model {
 
 	$markov_model = from_json($input);
 
-	# train system
+	return $markov_model;
+}
+
+
+
+##############################################################################
+#
+# get_training_data
+#
+##############################################################################
+
+sub get_training_data
+{
+	my $markov_model = shift;
+	my $training_data = {};
 
 	for my $state (keys %{$markov_model}) {
-		$markov_model_probabilities->{$state} = ();
+		$training_data->{$state} = ();
 		if ($state eq 'states') {
 			for my $new_state (@{$markov_model->{$state}}) {
-				push @{$markov_model_probabilities->{$state}}, $new_state;
+				push @{$training_data->{$state}}, $new_state;
 			}
 		}
 		else {
@@ -194,13 +248,13 @@ sub import_markov_model {
 				my $total = reduce { $a + $b } values $markov_model->{$state}{$new_state};
 				for my $value (keys %{$markov_model->{$state}{$new_state}}) {
 					my $probability = $markov_model->{$state}{$new_state}{$value} / $total;
-					$markov_model_probabilities->{$state}{$new_state}{$value} = $probability;
+					$training_data->{$state}{$new_state}{$value} = $probability;
 				}
 			}
 		}
 	}
 
-	return $markov_model_probabilities;
+	return $training_data;
 }
 
 
@@ -224,13 +278,3 @@ sub import_observations_data {
 
 	return $observations_data;
 }
-
-my $observation_data = import_observations_data($observations_file);
-my $training_data = import_markov_model($markov_model_file);
-
-print to_json viterbi(
-	  'training_data' => $training_data
-	, 'observations' => $observation_data
-	)
-	, { pretty => 1 }
-	;
