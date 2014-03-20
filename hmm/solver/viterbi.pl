@@ -98,7 +98,7 @@ sub viterbi
 				, $observations->[0]
 				, $training_data->{$state}{'emission'}{$observations->[0]}
 				, $training_data->{'start'}{'transition'}{$state}
-					* $training_data->{$state}{'emission'}{$observations->[0]}
+					+ $training_data->{$state}{'emission'}{$observations->[0]}
 				;
 		}
 
@@ -143,7 +143,7 @@ sub viterbi
 				} 
 				map {
 					if ($debug) {
-						printf "%6s: V[%-11g] -> T[%6s]P[%-4.2g] O[%s]P[%-8g] TP[%-11g]\n"
+						printf "%6s: V[%-11g] -> T[%6s]P[%-6.2g] O[%s]P[%-8g] TP[%-11g]\n"
 							, $_
 							, $viterbi->[$i - 1]{$_}
 							, $next_state
@@ -151,14 +151,14 @@ sub viterbi
 							, $observations->[$i]
 							, $training_data->{$next_state}{'emission'}{$observations->[$i]}
 							, $viterbi->[$i - 1]{$_}
-								* $training_data->{$_}{'transition'}{$next_state}
-								* $training_data->{$next_state}{'emission'}{$observations->[$i]}
+								+ $training_data->{$_}{'transition'}{$next_state}
+								+ $training_data->{$next_state}{'emission'}{$observations->[$i]}
 							;
 					}
 					[
 						$viterbi->[$i - 1]{$_}
-							* $training_data->{$_}{'transition'}{$next_state}
-							* $training_data->{$next_state}{'emission'}{$observations->[$i]}
+							+ $training_data->{$_}{'transition'}{$next_state}
+							+ $training_data->{$next_state}{'emission'}{$observations->[$i]}
 						, $_
 					]
 				}
@@ -255,7 +255,8 @@ sub get_training_data
 			for my $new_state (keys %{$markov_model->{$state}}) {
 				my $total = reduce { $a + $b } values $markov_model->{$state}{$new_state};
 				for my $value (keys %{$markov_model->{$state}{$new_state}}) {
-					my $probability = $markov_model->{$state}{$new_state}{$value} / $total;
+					my $probability = (log $markov_model->{$state}{$new_state}{$value})
+						- (log $total);
 					$training_data->{$state}{$new_state}{$value} = $probability;
 				}
 			}
