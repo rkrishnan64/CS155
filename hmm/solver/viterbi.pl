@@ -92,7 +92,7 @@ sub viterbi
 		if ($debug) {
 			printf "%6s: V[%-11g] -> T[%6s]P[%-4.2g] O[%s]P[%-8g] TP[%-11g]\n"
 				, "start"
-				, 1
+				, log 1
 				, $state
 				, $training_data->{'start'}{'transition'}{$state} . "]\n"
 				, $observations->[0]
@@ -112,7 +112,7 @@ sub viterbi
 
 		my $probability 
 			= $start_state_probability
-			* $emission_state_probability
+			+ $emission_state_probability
 			;
 
 		$viterbi->[0]{$state} = $probability;
